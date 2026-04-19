@@ -36,7 +36,7 @@
 
         canvas { image-rendering: pixelated; }
 
-        /* 화살쏘기 애니메이션 (정답 클릭 시 아래에서 과녁으로 꽂힘) */
+        /* 화살쏘기 애니메이션 */
         @keyframes shoot-arrow {
             0% { transform: translateY(50px) scale(1); opacity: 1; }
             50% { transform: translateY(-40px) scale(1.2); opacity: 1; }
@@ -58,9 +58,9 @@
 
     <div id="game-container" class="relative w-full h-full overflow-hidden shadow-2xl pointer-events-none bg-slate-900">
         
-        <!-- ================= RUN 게임 (단어 모드) ================= -->
         <canvas id="gameCanvas" class="absolute inset-0 w-full h-full block pointer-events-auto"></canvas>
 
+        <!-- 게임 중단 HUD -->
         <div id="game-ui" class="absolute inset-0 z-10 hidden flex flex-col pointer-events-none">
             <div class="flex justify-between items-start p-2 md:p-4">
                 <div class="flex gap-2 md:gap-3 items-center">
@@ -86,7 +86,6 @@
                 <p id="system-msg" class="text-[10px] md:text-sm text-yellow-300 mt-1 md:mt-2 h-4 transition-all font-bold">달리면서 정답 유리벽을 부수세요!</p>
             </div>
 
-            <!-- 대쉬(돌진) 버튼 -->
             <div id="dash-btn-container" class="absolute bottom-12 right-4 md:bottom-16 md:right-8 flex justify-end pointer-events-none hidden opacity-0 transition-opacity duration-300">
                 <button id="btn-dash" class="pointer-events-auto bg-gradient-to-br from-yellow-500 to-orange-600 text-white font-black w-14 h-14 md:w-16 md:h-16 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)] border-2 border-yellow-300 animate-pulse active:scale-90 transition-transform flex flex-col items-center justify-center leading-none">
                     <span class="text-xl md:text-2xl mb-0.5">⚡</span>
@@ -97,6 +96,12 @@
             <div class="absolute bottom-2 left-0 right-0 text-center text-gray-400 font-bold drop-shadow-md text-[10px] md:text-sm bg-black/50 py-1.5 pointer-events-none">
                 [Space/우측터치] 점프 &nbsp; | &nbsp; [↓/좌측터치] 하강
             </div>
+        </div>
+
+        <!-- 타이핑 진입 경고창 (새로 추가됨) -->
+        <div id="typing-warning-overlay" class="absolute inset-0 bg-red-600/90 z-50 hidden flex-col items-center justify-center pointer-events-auto backdrop-blur-md">
+            <h1 class="text-4xl md:text-6xl font-black text-white mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]">⚠️ 타이핑 준비 ⚠️</h1>
+            <p class="text-lg md:text-2xl font-bold text-yellow-300 animate-pulse bg-black/50 px-6 py-2 rounded-full">잠시 화면 터치를 멈춰주세요!</p>
         </div>
 
         <div id="preview-overlay" onclick="closePreview()" class="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-50 hidden pointer-events-auto cursor-pointer">
@@ -111,7 +116,6 @@
             </div>
         </div>
 
-        <!-- ================= 타이핑 모드 UI (오버레이) ================= -->
         <div id="typing-overlay" class="absolute inset-0 bg-black/85 z-40 hidden flex-col items-center justify-center pointer-events-auto backdrop-blur-sm px-2">
             <h2 class="text-3xl md:text-5xl font-black text-yellow-400 text-glow mb-2">⌨️ 말씀 타이핑</h2>
             <p id="typing-instruction" class="text-gray-300 mb-4 text-xs md:text-sm text-center">문맥을 보고 정답 단어를 타이핑하세요!<br><span class="text-emerald-400">(띄어쓰기는 채점 시 자동으로 무시되니 편하게 치세요)</span></p>
@@ -120,18 +124,22 @@
                 <p id="typing-sentence" class="text-sm md:text-xl text-white font-bold leading-relaxed break-keep"></p>
             </div>
 
-            <!-- 타이머 -->
             <div class="w-full max-w-xl h-3 bg-slate-800 rounded-full overflow-hidden mb-4 border border-slate-600">
                 <div id="typing-timer-bar" class="h-full bg-emerald-400 w-full transition-all duration-100 ease-linear"></div>
             </div>
 
+            <div id="mobile-focus-btn-container" class="w-full max-w-xl mb-4">
+                <button onclick="focusTypingInput()" class="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-lg md:text-xl rounded-xl shadow-[0_4px_0_#b45309] animate-pulse active:translate-y-1 transition-all">
+                    👇 여기를 터치하여 키보드 열기 👇
+                </button>
+            </div>
+
             <div class="flex flex-col md:flex-row gap-2 w-full max-w-xl">
-                <textarea id="typing-input" rows="3" class="flex-1 px-4 py-3 rounded-lg text-black font-black text-base md:text-lg w-full outline-none border-4 border-yellow-500 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-500/50 transition-all resize-none custom-scrollbar" placeholder="띄어쓰기하며 이어서 치세요!"></textarea>
-                <button onclick="submitTypingAnswer(false)" class="px-6 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-lg md:text-xl rounded-lg shadow-[0_4px_0_#b45309] active:translate-y-1 h-fit md:h-auto">확인</button>
+                <textarea id="typing-input" rows="3" class="hidden flex-1 px-4 py-3 rounded-lg text-black font-black text-base md:text-lg w-full outline-none border-4 border-yellow-500 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-500/50 transition-all resize-none custom-scrollbar" placeholder="띄어쓰기하며 이어서 치세요!"></textarea>
+                <button id="typing-submit-btn" onclick="submitTypingAnswer(false)" class="hidden px-6 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-lg md:text-xl rounded-lg shadow-[0_4px_0_#b45309] active:translate-y-1 h-fit md:h-auto">확인</button>
             </div>
         </div>
 
-        <!-- ================= 인출훈련 (과녁 미니게임) ================= -->
         <div id="archery-ui" class="absolute inset-0 z-20 hidden bg-slate-900 flex-col pointer-events-auto">
             <div class="flex justify-between items-center p-3 md:p-4 bg-black/50 border-b border-slate-700 shrink-0">
                 <button onclick="quitArchery()" class="px-3 py-1.5 md:py-2 bg-red-600 text-white font-bold rounded-lg text-sm md:text-base shadow-[0_3px_0_#991b1b] active:translate-y-1">🚪 나가기</button>
@@ -145,26 +153,21 @@
 
             <div class="flex-1 flex flex-col items-center justify-start p-4 relative overflow-y-auto custom-scrollbar w-full">
                 
-                <!-- 문제 (말씀) -->
                 <div class="bg-black/70 border border-slate-600 p-4 md:p-5 rounded-xl shadow-xl w-full max-w-2xl text-center z-10 mt-2 backdrop-blur-sm shrink-0">
                     <p id="archery-question" class="text-sm md:text-xl text-white font-bold leading-relaxed break-keep"></p>
                 </div>
 
-                <!-- 오직 과녁만 남긴 영역 -->
                 <div class="relative w-full flex flex-col items-center justify-center mt-6 md:mt-8 z-0 h-32 md:h-40 shrink-0">
                     <div id="archery-target" class="text-6xl md:text-8xl z-10 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-transform duration-300 relative z-10">🎯</div>
                     <div id="archery-arrow" class="text-4xl md:text-5xl mt-2 opacity-0 pointer-events-none drop-shadow-[0_0_10px_white] absolute bottom-0 z-20">⬆️</div>
                 </div>
 
-                <!-- 선택지 영역 -->
-                <div class="flex flex-col items-center w-full mt-6 mb-4 z-10 shrink-0">
+                <div class="flex-1 flex flex-col items-center w-full mt-6 mb-4 z-10 shrink-0">
                     <div id="archery-choices" class="grid grid-cols-2 gap-2 md:gap-3 w-full max-w-2xl bg-black/40 p-4 rounded-xl backdrop-blur-md shadow-inner border border-slate-600">
-                        <!-- JS 렌더링 -->
                     </div>
                 </div>
             </div>
 
-            <!-- 결과 오버레이 -->
             <div id="archery-result" class="absolute inset-0 bg-black/80 z-30 hidden flex-col items-center justify-center text-center pointer-events-auto backdrop-blur-sm">
                 <div id="archery-result-icon" class="text-6xl md:text-8xl mb-4 drop-shadow-[0_0_15px_white]">✨</div>
                 <h2 id="archery-result-msg" class="text-3xl md:text-5xl font-black text-white text-glow mb-2">정답!</h2>
@@ -173,7 +176,6 @@
             </div>
         </div>
 
-        <!-- ================= 메인 메뉴 ================= -->
         <div id="main-menu" class="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center z-40 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto overflow-y-auto py-8">
             <h1 class="text-4xl md:text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-1 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">레벨레이션 런</h1>
             <p class="text-sm md:text-lg text-yellow-200 mb-6 font-bold tracking-widest text-glow">진리의 조각 (7~12장)</p>
@@ -182,7 +184,6 @@
             </div>
             
             <div class="flex flex-col md:flex-row gap-4 md:gap-8 w-11/12 max-w-4xl">
-                <!-- 게임 모드 섹션 -->
                 <div class="flex-1 bg-slate-800/80 p-4 rounded-xl border border-slate-600 shadow-lg flex flex-col gap-3">
                     <h3 class="text-yellow-400 font-black text-lg md:text-xl border-b border-slate-600 pb-2 text-center">🎮 플레이 모드</h3>
                     <div class="grid grid-cols-2 gap-2">
@@ -203,7 +204,6 @@
                     </div>
                 </div>
 
-                <!-- 기록 및 설정 섹션 -->
                 <div class="flex-1 bg-slate-800/80 p-4 rounded-xl border border-slate-600 shadow-lg flex flex-col gap-3">
                     <h3 class="text-blue-400 font-black text-lg md:text-xl border-b border-slate-600 pb-2 text-center">🏆 기록 및 설정</h3>
                     <div class="grid grid-cols-2 gap-2">
@@ -220,27 +220,21 @@
             </div>
         </div>
 
-        <!-- ================= 모달 오버레이 ================= -->
         <div id="modal-overlay" class="absolute inset-0 bg-black/85 flex items-center justify-center z-[60] hidden opacity-0 transition-opacity duration-300 pointer-events-auto">
             
-            <!-- 오답 분석 노트 (전체 타이핑용) -->
             <div id="modal-diff" class="hidden bg-slate-800 border-2 border-red-500 rounded-xl p-5 md:p-6 max-w-2xl w-11/12 shadow-2xl flex flex-col gap-3 md:gap-4 text-center">
                 <h2 class="text-2xl md:text-3xl font-black text-red-400 mb-1 text-glow-red">오답 분석 노트</h2>
                 <p class="text-gray-300 text-xs md:text-sm">틀린 글자는 <span class="text-red-500 line-through">취소선</span>, 빼먹은 글자는 <span class="text-red-400 border-b-2 border-red-500 font-bold">밑줄</span>로 표시됩니다.</p>
-                
                 <div class="bg-black/60 p-3 md:p-4 rounded-lg border border-slate-600 my-1 md:my-2">
                     <h3 id="diff-accuracy" class="text-2xl md:text-3xl font-black text-yellow-400 mb-2 md:mb-4">정확도: 0%</h3>
                     <p id="diff-content" class="text-sm md:text-xl font-bold leading-relaxed break-all text-left custom-scrollbar max-h-32 md:max-h-48 overflow-y-auto bg-slate-900 p-2 md:p-3 rounded border border-slate-700"></p>
                 </div>
-
                 <p id="diff-timer" class="text-yellow-300 font-bold text-xs md:text-sm animate-pulse">10초 후 게임으로 돌아갑니다...</p>
                 <button onclick="closeDiffModalEarly()" class="mt-1 md:mt-2 px-4 py-2 md:py-3 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500 transition-all text-sm md:text-base shadow-[0_4px_0_#334155] active:translate-y-1">스킵하고 계속하기</button>
             </div>
 
-            <!-- 설정 모달 (템포 + 모드) -->
             <div id="modal-settings" class="hidden bg-slate-800 border-2 border-slate-500 rounded-xl p-5 md:p-6 max-w-sm w-11/12 shadow-2xl flex flex-col gap-3">
                 <h2 class="text-xl md:text-3xl font-black text-white text-glow mb-1 text-center">게임 설정</h2>
-                
                 <div class="bg-slate-900 p-3 md:p-4 rounded-lg border border-slate-700">
                     <p class="text-white font-bold text-xs md:text-base mb-3 text-center">런닝 게임 진행 방식</p>
                     <div class="flex flex-col gap-2">
@@ -249,7 +243,6 @@
                         <button onclick="changePlayMode('typing_full')" id="btn-mode-typing_full" class="w-full py-2.5 rounded-lg font-bold text-sm bg-slate-600 text-white">전체 절 타이핑 (60초)</button>
                     </div>
                 </div>
-
                 <div class="bg-slate-900 p-3 md:p-4 rounded-lg border border-slate-700 text-center mt-2">
                     <p class="text-white font-bold text-xs md:text-base mb-2">퀴즈 출제 간격 (템포)</p>
                     <div class="flex items-center justify-center gap-3 md:gap-4">
@@ -261,78 +254,11 @@
                 <button onclick="closeModal()" class="mt-2 px-4 py-2 md:py-3 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500 transition-all text-sm md:text-base">닫기</button>
             </div>
 
-            <!-- 도움말 -->
-            <div id="modal-how-to-play" class="hidden bg-slate-800 border-2 border-slate-400 rounded-xl p-5 md:p-6 w-11/12 max-w-2xl shadow-2xl flex flex-col gap-3">
-                <h2 class="text-2xl md:text-3xl font-black text-white text-center text-glow">❓ 종합 게임 가이드</h2>
-                <div class="text-left text-gray-200 space-y-4 bg-slate-900 p-4 rounded-lg text-xs md:text-sm overflow-y-auto max-h-[60vh] custom-scrollbar">
-                    <div>
-                        <h3 class="text-yellow-400 font-bold text-base md:text-lg border-b border-yellow-800 pb-1 mb-2">🏃‍♂️ 1. 단어 런닝 (달리기)</h3>
-                        <p class="mb-2 text-gray-300">코인을 먹으며 달리다가 주기적으로 나타나는 퀴즈 존을 통과하는 메인 모드입니다. <strong class="text-white">[게임 설정]</strong>에서 아래 3가지 방식을 고를 수 있습니다.</p>
-                        <ul class="space-y-2 pl-3 list-disc text-gray-400">
-                            <li><strong class="text-yellow-300">3지선다 모드:</strong> 길을 막고 있는 3개의 유리벽 중, 정답 단어가 적힌 유리벽으로 돌진하여 부수고 통과합니다.</li>
-                            <li><strong class="text-yellow-300">빈칸 타이핑:</strong> 퀴즈 존에 도달하면 달리기가 멈추고 30초의 시간이 주어집니다. 빈칸에 들어갈 단어를 직접 타이핑하여 맞춥니다.</li>
-                            <li><strong class="text-yellow-300">전체 절 타이핑:</strong> 60초의 시간 동안 해당 절의 <strong>전체 문장</strong>을 직접 쳐야 합니다. (※ 띄어쓰기는 채점 시 무시되므로 편하게 입력하세요!)</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h3 class="text-emerald-400 font-bold text-base md:text-lg border-b border-emerald-800 pb-1 mb-2 mt-4">🎯 2. 인출훈련 (과녁 맞추기)</h3>
-                        <p class="mb-2 text-gray-300">달리기와 별개로 진행되는 미니게임입니다.</p>
-                        <ul class="space-y-1 pl-3 list-disc text-gray-400">
-                            <li>화면에 제시된 1절의 성경 문장을 읽고, 하단의 4가지 선택지 중 <strong>정확한 장과 절</strong>을 맞추세요.</li>
-                            <li>10초의 제한 시간이 있으며, <strong>빨리 맞출수록 화살이 날아가며 더 많은 코인 보너스</strong>를 획득합니다!</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h3 class="text-blue-400 font-bold text-base md:text-lg border-b border-blue-800 pb-1 mb-2 mt-4">🏆 3. 기록 및 상점 활용</h3>
-                        <ul class="space-y-2 pl-3 list-disc text-gray-400">
-                            <li><strong class="text-blue-300">수집 & 오답 노트:</strong> 정답을 맞춘 단어는 횟수와 함께 수집되며, 틀렸던 단어나 인출훈련 구절은 오답 노트에 박제되어 약점을 보완할 수 있습니다.</li>
-                            <li><strong class="text-slate-300">상점 & 도구함:</strong> 모은 코인으로 3단 점프나 캐릭터 스킨(황금/푸른/붉은)을 구매하고 도구함에서 장착해 보세요.</li>
-                            <li><strong class="text-pink-300">내 문제 설정:</strong> 도저히 안 외워지는 구절이 있다면, 이 메뉴에서 내가 원하는 단어만 쉼표로 입력하여 집중적으로 런닝 게임을 연습할 수 있습니다.</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h3 class="text-red-400 font-bold text-base md:text-lg border-b border-red-800 pb-1 mb-2 mt-4">🕹️ 4. 조작법 (런닝 모드)</h3>
-                        <ul class="space-y-1 pl-3 list-none text-gray-300 bg-black/50 p-3 rounded">
-                            <li><strong class="text-white">💻 PC:</strong> [Space] 점프 / [↓] 아래 층으로 하강</li>
-                            <li><strong class="text-white">📱 모바일:</strong> [화면 우측] 터치 점프 / [화면 좌측] 터치 하강</li>
-                            <li class="mt-2 pt-2 border-t border-slate-700">⚡ <strong class="text-orange-400">정답 돌진:</strong> (3지선다 전용) 퀴즈 존에서 정답 위치를 이미 파악했다면, PC는 [Shift] 키, 모바일은 우측 하단 [⚡버튼]을 눌러 기다림 없이 엄청난 속도로 벽을 깨부수며 스킵하세요!</li>
-                        </ul>
-                    </div>
-                </div>
-                <button onclick="closeModal()" class="mt-2 px-4 py-3 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500 shadow-[0_4px_0_#334155] active:translate-y-1 text-sm md:text-base">도움말 닫기</button>
-            </div>
-
-            <!-- 오답노트 & 수집 -->
-            <div id="modal-records" class="hidden bg-slate-800 border-2 border-blue-500 rounded-xl p-4 md:p-6 w-11/12 max-w-2xl shadow-2xl flex flex-col gap-3">
-                <div class="flex justify-center gap-4 mb-2 border-b border-slate-700 pb-2">
-                    <button onclick="switchRecordTab('collected')" id="tab-collected" class="text-blue-400 font-black text-lg md:text-xl px-2 border-b-2 border-blue-400">📚 단어 수집</button>
-                    <button onclick="switchRecordTab('wrong')" id="tab-wrong" class="text-gray-500 font-black text-lg md:text-xl px-2">💔 오답 노트</button>
-                </div>
-                <div id="record-collected" class="overflow-y-auto max-h-64 custom-scrollbar pr-2 flex flex-wrap gap-2 content-start"></div>
-                <div id="record-wrong" class="hidden overflow-y-auto max-h-64 custom-scrollbar pr-2 flex flex-col gap-2"></div>
-                <button onclick="closeModal()" class="mt-2 px-4 py-2 md:py-3 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500 text-sm md:text-base">닫기</button>
-            </div>
-
-            <!-- 나가기 확인 -->
-            <div id="modal-quit" class="hidden bg-slate-800 border-2 border-red-500 rounded-xl p-5 md:p-6 max-w-sm w-11/12 text-center">
-                <h2 class="text-xl md:text-3xl font-black text-white mb-2">게임 중단</h2>
-                <p class="text-gray-300 text-sm md:text-base">정말 나가시겠습니까?<br><span class="text-yellow-400 font-bold">(지금까지 모은 코인은 자동 저장됩니다)</span></p>
-                <div class="flex gap-2 mt-4">
-                    <button onclick="closeModal()" class="flex-1 px-3 py-2 md:py-3 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500">취소</button>
-                    <button onclick="returnToMenu()" class="flex-1 px-3 py-2 md:py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-500">나가기</button>
-                </div>
-            </div>
-
-            <!-- 장 선택 (신규) -->
             <div id="modal-chapter-select" class="hidden bg-slate-800 border-2 border-cyan-500 rounded-xl p-5 md:p-6 max-w-sm w-11/12 flex flex-col gap-3">
                 <h2 class="text-xl md:text-3xl font-black text-cyan-400 text-glow mb-1">시작할 장 선택</h2>
                 <select id="chapter-dropdown" class="w-full p-2 bg-slate-900 text-white font-bold border border-slate-600 rounded-lg outline-none text-xs md:text-base custom-scrollbar">
-                    <option value="7">계시록 7장</option>
-                    <option value="8">계시록 8장</option>
-                    <option value="9">계시록 9장</option>
-                    <option value="10">계시록 10장</option>
-                    <option value="11">계시록 11장</option>
-                    <option value="12">계시록 12장</option>
+                    <option value="7">계시록 7장</option><option value="8">계시록 8장</option><option value="9">계시록 9장</option>
+                    <option value="10">계시록 10장</option><option value="11">계시록 11장</option><option value="12">계시록 12장</option>
                 </select>
                 <div class="flex gap-2 mt-2">
                     <button onclick="startChapterGame(false)" class="flex-1 px-2 py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-500 text-xs md:text-sm">순서대로 시작</button>
@@ -341,7 +267,6 @@
                 <button onclick="closeModal()" class="mt-1 w-full px-3 py-2 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500 text-sm md:text-base">취소</button>
             </div>
 
-            <!-- 스테이지 선택 -->
             <div id="modal-stage-select" class="hidden bg-slate-800 border-2 border-indigo-500 rounded-xl p-5 md:p-6 max-w-sm w-11/12 flex flex-col gap-3">
                 <h2 class="text-xl md:text-3xl font-black text-indigo-400 text-glow mb-1">시작할 절 선택</h2>
                 <select id="stage-dropdown" class="w-full p-2 bg-slate-900 text-white font-bold border border-slate-600 rounded-lg outline-none text-xs md:text-base custom-scrollbar"></select>
@@ -351,7 +276,6 @@
                 </div>
             </div>
 
-            <!-- 상점 -->
             <div id="modal-shop" class="hidden bg-slate-800 border-2 border-yellow-500 rounded-xl p-5 md:p-6 max-w-md w-11/12 flex flex-col gap-3">
                 <div class="flex justify-between items-center"><h2 class="text-xl md:text-3xl font-black text-yellow-400">게임 상점</h2><div class="text-yellow-400 font-bold bg-black/50 px-2 py-1 rounded-full border border-yellow-600 text-xs">🪙 <span id="shop-coin-display">0</span></div></div>
                 <div class="space-y-2 overflow-y-auto max-h-56 custom-scrollbar pr-2">
@@ -363,15 +287,13 @@
                 </div>
                 <button onclick="closeModal()" class="mt-2 px-4 py-2 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500">닫기</button>
             </div>
-            
-            <!-- 도구함 -->
+
             <div id="modal-inventory" class="hidden bg-slate-800 border-2 border-emerald-500 rounded-xl p-5 md:p-6 max-w-md w-11/12 flex flex-col gap-3">
                 <h2 class="text-xl md:text-3xl font-black text-emerald-400 mb-1">내 도구함</h2>
                 <div class="space-y-2 overflow-y-auto max-h-56 custom-scrollbar pr-2" id="inventory-list"></div>
                 <button onclick="closeModal()" class="mt-2 px-4 py-2 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500">닫기</button>
             </div>
 
-            <!-- 내 문제 (커스텀) -->
             <div id="modal-custom" class="hidden bg-slate-800 border-2 border-pink-500 rounded-xl p-5 md:p-6 max-w-xl w-11/12 flex flex-col gap-3">
                 <h2 class="text-xl md:text-3xl font-black text-pink-400 mb-1">내 문제 설정</h2>
                 <div class="flex flex-col gap-2 text-white">
@@ -388,7 +310,48 @@
                 </div>
             </div>
 
-            <!-- 결과 모달 -->
+            <div id="modal-how-to-play" class="hidden bg-slate-800 border-2 border-slate-400 rounded-xl p-5 md:p-6 w-11/12 max-w-2xl shadow-2xl flex flex-col gap-3">
+                <h2 class="text-2xl md:text-3xl font-black text-white text-center text-glow">❓ 종합 게임 가이드</h2>
+                <div class="text-left text-gray-200 space-y-4 bg-slate-900 p-4 rounded-lg text-xs md:text-sm overflow-y-auto max-h-[60vh] custom-scrollbar">
+                    <div>
+                        <h3 class="text-yellow-400 font-bold text-base md:text-lg border-b border-yellow-800 pb-1 mb-2">🏃‍♂️ 1. 단어 런닝 (달리기)</h3>
+                        <p class="mb-2 text-gray-300">코인을 먹으며 달리다가 주기적으로 나타나는 퀴즈 존을 통과하는 메인 모드입니다.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-emerald-400 font-bold text-base md:text-lg border-b border-emerald-800 pb-1 mb-2 mt-4">🎯 2. 인출훈련 (과녁 맞추기)</h3>
+                        <p class="mb-2 text-gray-300">달리기와 별개로 진행되는 미니게임입니다.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-red-400 font-bold text-base md:text-lg border-b border-red-800 pb-1 mb-2 mt-4">🕹️ 3. 조작법 (런닝 모드)</h3>
+                        <ul class="space-y-1 pl-3 list-none text-gray-300 bg-black/50 p-3 rounded">
+                            <li><strong class="text-white">💻 PC:</strong> [Space] 점프 / [↓] 아래 층으로 하강</li>
+                            <li><strong class="text-white">📱 모바일:</strong> [화면 우측] 터치 점프 / [화면 좌측] 터치 하강</li>
+                            <li class="mt-2 pt-2 border-t border-slate-700">⚡ <strong class="text-orange-400">정답 돌진(Dash):</strong> 퀴즈 존에서 [⚡버튼]이나 [Shift]키를 누르면 <strong>정답 벽으로 자동 조준되어 엄청난 속도로 파괴하며 통과</strong>합니다!</li>
+                        </ul>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="mt-2 px-4 py-3 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500 shadow-[0_4px_0_#334155] active:translate-y-1 text-sm md:text-base">도움말 닫기</button>
+            </div>
+
+            <div id="modal-records" class="hidden bg-slate-800 border-2 border-blue-500 rounded-xl p-4 md:p-6 w-11/12 max-w-2xl shadow-2xl flex flex-col gap-3">
+                <div class="flex justify-center gap-4 mb-2 border-b border-slate-700 pb-2">
+                    <button onclick="switchRecordTab('collected')" id="tab-collected" class="text-blue-400 font-black text-lg md:text-xl px-2 border-b-2 border-blue-400">📚 단어 수집</button>
+                    <button onclick="switchRecordTab('wrong')" id="tab-wrong" class="text-gray-500 font-black text-lg md:text-xl px-2">💔 오답 노트</button>
+                </div>
+                <div id="record-collected" class="overflow-y-auto max-h-64 custom-scrollbar pr-2 flex flex-wrap gap-2 content-start"></div>
+                <div id="record-wrong" class="hidden overflow-y-auto max-h-64 custom-scrollbar pr-2 flex flex-col gap-2"></div>
+                <button onclick="closeModal()" class="mt-2 px-4 py-2 md:py-3 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500 text-sm md:text-base">닫기</button>
+            </div>
+
+            <div id="modal-quit" class="hidden bg-slate-800 border-2 border-red-500 rounded-xl p-5 md:p-6 max-w-sm w-11/12 text-center">
+                <h2 class="text-xl md:text-3xl font-black text-white mb-2">게임 중단</h2>
+                <p class="text-gray-300 text-sm md:text-base">정말 나가시겠습니까?<br><span class="text-yellow-400 font-bold">(모은 코인은 자동 저장됩니다)</span></p>
+                <div class="flex gap-2 mt-4">
+                    <button onclick="closeModal()" class="flex-1 px-3 py-2 md:py-3 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-500">취소</button>
+                    <button onclick="returnToMenu()" class="flex-1 px-3 py-2 md:py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-500">나가기</button>
+                </div>
+            </div>
+
             <div id="modal-gameover" class="hidden bg-slate-800 border-2 border-red-500 rounded-xl p-6 md:p-8 max-w-md w-11/12 flex flex-col gap-3 text-center">
                 <h2 id="result-title" class="text-3xl md:text-4xl font-black text-red-500">게임 오버</h2>
                 <p id="result-desc" class="text-sm md:text-lg text-gray-200">생명력을 모두 잃었습니다.</p>
@@ -396,11 +359,21 @@
                 <p class="text-gray-400 text-xs mt-2 animate-pulse">잠시 후 메인 메뉴로 돌아갑니다...</p>
                 <button onclick="returnToMenu()" class="mt-2 px-4 py-2 bg-slate-600 text-white font-bold rounded">바로가기</button>
             </div>
+            
+            <div id="modal-clear" class="hidden bg-slate-800 border-2 border-yellow-500 rounded-xl p-6 md:p-8 max-w-md w-11/12 flex flex-col gap-3 text-center">
+                <h2 class="text-2xl md:text-3xl font-black text-yellow-400 mb-2 text-glow">스테이지 클리어!</h2>
+                <p class="text-sm md:text-lg text-gray-200">모든 말씀을 마스터하셨습니다!</p>
+                <button onclick="returnToMenu()" class="mt-4 px-4 py-3 bg-yellow-600 text-black font-bold rounded-lg">메인으로 돌아가기</button>
+            </div>
         </div>
     </div>
 
 <script>
-    // --- 0. 웹 오디오 (사운드 효과 엔진) ---
+    // --- 전역 상태 변수 ---
+    let isPaused = false;
+    let gameState = 'menu'; // menu, playing, preview, typing_warning, typing, archery, gameover
+
+    // --- 0. 웹 오디오 엔진 ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx;
     function initAudio() {
@@ -439,7 +412,7 @@
         }
     }
 
-    // --- 1. 원문 데이터 ---
+    // --- 1. 성경 원문 데이터 ---
     const stagesRaw = [
         { title: "계시록 7:1", text: "이 일 후에 내가 네 천사가 땅 네 모퉁이에 선 것을 보니 땅의 사방의 바람을 붙잡아 바람으로 하여금 땅에나 바다에나 각종 나무에 불지 못하게 하더라", defaultBlanks: ["천사", "모퉁이", "사방", "바람", "나무"], decoys: ["사람", "바위", "일어나게", "짐승", "풀"] },
         { title: "계시록 7:2", text: "또 보매 다른 천사가 살아계신 하나님의 인을 가지고 해 돋는 데로부터 올라와서 땅과 바다를 해롭게 할 권세를 얻은 네 천사를 향하여", defaultBlanks: ["천사", "인", "권세", "해롭게", "해 돋는"], decoys: ["사자", "검", "심판", "불", "어두운"] },
@@ -555,16 +528,11 @@
     let userCustomSettings = { randomMode: true, customBlanks: {} }; 
     let gameStats = { words: {}, verses: {} };
     
-    // 장 선택(순서/랜덤) 모드용 상태 변수
-    let isChapterMode = false;
-    let currentChapterFilter = "";
-    let chapterEndIdx = -1;
-
-    let isRandomMode = false;
-    let randomQueue = [];
+    let isChapterMode = false; let currentChapterFilter = ""; let chapterEndIdx = -1;
+    let isRandomMode = false; let randomQueue = [];
 
     function loadData() {
-        const d = localStorage.getItem('revRunDataV10'); 
+        const d = localStorage.getItem('revRunDataV12'); 
         if (d) {
             const p = JSON.parse(d);
             totalCoins = p.coins || 0; savedStageIdx = p.savedStageIdx || 0;
@@ -579,7 +547,7 @@
         if (savedStageIdx > 0 && savedStageIdx < stagesRaw.length) btnContinue.classList.remove('opacity-50', 'pointer-events-none');
         else btnContinue.classList.add('opacity-50', 'pointer-events-none');
     }
-    function saveData() { localStorage.setItem('revRunDataV10', JSON.stringify({ coins: totalCoins, savedStageIdx, userSettings, inventory, userCustomSettings, gameStats })); updateMenuCoins(); }
+    function saveData() { localStorage.setItem('revRunDataV12', JSON.stringify({ coins: totalCoins, savedStageIdx, userSettings, inventory, userCustomSettings, gameStats })); updateMenuCoins(); }
     function updateMenuCoins() { document.getElementById('menu-coin-display').innerText = totalCoins; const shopCoin = document.getElementById('shop-coin-display'); if(shopCoin) shopCoin.innerText = totalCoins; }
     function updateMenuModeDisplay() {
         const d = document.getElementById('menu-playmode-display');
@@ -600,15 +568,17 @@
 
     // --- 3. 런닝 게임 변수 ---
     const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
-    let gameState = 'menu'; let animationId; let frameCount = 0; let baseGameSpeed = 5.5; let gameSpeed = baseGameSpeed; let groundY = 0; const laneGap = 110; 
+    let animationId; let frameCount = 0; let baseGameSpeed = 5.5; let gameSpeed = baseGameSpeed; let groundY = 0; const laneGap = 110; 
     const player = { x: 150, y: 0, width: 36, height: 50, vy: 0, gravity: 0.65, jumpPower: -12.5, isJumping: false, jumpCount: 0, maxJumps: 2, hp: 3, hitTimer: 0, dropFrames: 0, sessionCoins: 0, isDashing: false };
     let platforms = [], coins = [], gates = [], particles = [], signs = [];
     let distanceToNextEvent = 0, quizActive = false, quizWallId = 0, framesUntilQuiz = 600; 
     let currentStageIdx = 0, currentBlankIdx = 0; let currentStageData = null; 
 
-    // --- 4. UI 관리 ---
+    // --- 4. UI 관리 (모달 제어) ---
     function openModal(type) {
-        const allModals = ['how-to-play', 'result', 'shop', 'inventory', 'custom', 'settings', 'stage-select', 'chapter-select', 'quit', 'records', 'diff'];
+        if (gameState === 'playing' || gameState === 'archery') isPaused = true;
+
+        const allModals = ['how-to-play', 'result', 'shop', 'inventory', 'custom', 'settings', 'stage-select', 'chapter-select', 'quit', 'records', 'diff', 'clear', 'gameover'];
         allModals.forEach(id => { const el = document.getElementById(`modal-${id}`); if(el) el.classList.add('hidden'); });
         const overlay = document.getElementById('modal-overlay'); overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.remove('opacity-0'), 10);
         
@@ -619,46 +589,41 @@
             stagesRaw.forEach((s, i) => { let opt = document.createElement('option'); opt.value = i; opt.innerText = s.title; sel.appendChild(opt); }); sel.value = savedStageIdx;
         }
         if (type === 'records') { switchRecordTab('collected'); }
-        const targetModal = document.getElementById(`modal-${type}`); if(targetModal) targetModal.classList.remove('hidden');
         
-        // Clear 화면 분기 처리
-        if (type === 'clear') {
-            const titleEl = document.getElementById('result-title');
-            titleEl.innerText = "스테이지 올 클리어!"; 
-            titleEl.className = "text-2xl md:text-3xl font-black text-yellow-400 mb-2 text-glow";
-            if (isChapterMode) {
-                document.getElementById('result-desc').innerText = `계시록 ${currentChapterFilter}장을 완벽히 마스터하셨습니다!`;
-            } else {
-                document.getElementById('result-desc').innerText = "요한계시록 7~12장을 완벽히 마스터하셨습니다!";
-            }
-        }
+        const targetModal = document.getElementById(`modal-${type}`); if(targetModal) targetModal.classList.remove('hidden');
         if (type === 'gameover' || type === 'clear') { document.getElementById('result-coins').innerText = player.sessionCoins; }
     }
+    
     function closeModal() {
         const overlay = document.getElementById('modal-overlay'); overlay.classList.add('opacity-0');
-        setTimeout(() => { overlay.classList.add('hidden'); const allModals = ['how-to-play', 'result', 'shop', 'inventory', 'custom', 'settings', 'stage-select', 'chapter-select', 'quit', 'records', 'diff', 'gameover', 'clear']; allModals.forEach(id => { const el = document.getElementById(`modal-${id}`); if(el) el.classList.add('hidden'); }); }, 300);
+        setTimeout(() => { 
+            overlay.classList.add('hidden'); 
+            const allModals = ['how-to-play', 'result', 'shop', 'inventory', 'custom', 'settings', 'stage-select', 'chapter-select', 'quit', 'records', 'diff', 'gameover', 'clear']; 
+            allModals.forEach(id => { const el = document.getElementById(`modal-${id}`); if(el) el.classList.add('hidden'); }); 
+            
+            if (gameState === 'playing' || gameState === 'archery') isPaused = false;
+        }, 300);
     }
+
     function quitGame() { openModal('quit'); }
     function quitGameFromPreview(e) { if (e) { e.preventDefault(); e.stopPropagation(); } openModal('quit'); }
     function returnToMenu() {
-        if(gameState === 'playing' || gameState === 'preview') totalCoins += player.sessionCoins;
+        if(gameState === 'playing' || gameState === 'preview' || gameState === 'typing' || gameState === 'typing_warning') totalCoins += player.sessionCoins;
         saveData(); loadData(); closeModal();
         if(diffTimeout) clearInterval(diffTimeout);
+        if(typingTimer) clearInterval(typingTimer);
+        isPaused = false;
+        
         document.getElementById('game-ui').classList.add('hidden'); document.getElementById('preview-overlay').classList.add('hidden');
         document.getElementById('typing-overlay').classList.add('hidden'); document.getElementById('typing-overlay').classList.remove('flex');
+        document.getElementById('typing-warning-overlay').classList.add('hidden'); document.getElementById('typing-warning-overlay').classList.remove('flex');
+        
         const mainMenu = document.getElementById('main-menu'); mainMenu.classList.remove('hidden');
         setTimeout(() => mainMenu.classList.remove('opacity-0', 'pointer-events-none'), 10);
         gameState = 'menu'; if(animationId) { cancelAnimationFrame(animationId); animationId = null; } ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    function handleGameOver() {
-        gameState = 'gameover';
-        openModal('gameover');
-        document.getElementById('game-ui').classList.add('hidden');
-        setTimeout(() => {
-            if (gameState === 'gameover') returnToMenu();
-        }, 3000);
-    }
+    function handleGameOver() { gameState = 'gameover'; openModal('gameover'); document.getElementById('game-ui').classList.add('hidden'); }
 
     // --- 설정 및 상점 ---
     function changeInterval(delta) { let n = userSettings.quizIntervalSeconds + delta; if (n >= 5 && n <= 20) { userSettings.quizIntervalSeconds = n; saveData(); document.getElementById('setting-interval-val').innerText = `${n}초`; } }
@@ -737,22 +702,14 @@
         return { title: raw.title, text: raw.text, template: template, blanks: finalWords, decoys: [...raw.decoys], totalBlanks: finalWords.length };
     }
 
-    // 신규 추가된 '장' 단위 시작 함수
     function startChapterGame(isRandom) {
         const chap = document.getElementById('chapter-dropdown').value;
         const prefix = `계시록 ${chap}:`;
-        
         let chapterIndices = [];
-        for (let i = 0; i < stagesRaw.length; i++) {
-            if (stagesRaw[i].title.startsWith(prefix)) {
-                chapterIndices.push(i);
-            }
-        }
-        
+        for (let i = 0; i < stagesRaw.length; i++) { if (stagesRaw[i].title.startsWith(prefix)) chapterIndices.push(i); }
         if (chapterIndices.length === 0) return; 
         
-        isChapterMode = true;
-        currentChapterFilter = chap;
+        isChapterMode = true; currentChapterFilter = chap;
         
         if (isRandom) {
             isRandomMode = true;
@@ -776,6 +733,7 @@
 
     function launchGame() {
         initAudio(); 
+        isPaused = false;
         document.getElementById('main-menu').classList.add('opacity-0', 'pointer-events-none');
         setTimeout(() => document.getElementById('main-menu').classList.add('hidden'), 300);
         document.getElementById('game-ui').classList.remove('hidden'); document.getElementById('archery-ui').classList.add('hidden'); 
@@ -803,19 +761,13 @@
         totalCoins += player.sessionCoins; player.sessionCoins = 0; saveData();
         if (isRandomMode) {
             if(randomQueue.length === 0) {
-                if (isChapterMode) {
-                    setTimeout(() => { openModal('clear'); document.getElementById('game-ui').classList.add('hidden'); }, 1500);
-                    return;
-                } else {
-                    refillRandomQueue(); 
-                }
+                setTimeout(() => { openModal('clear'); document.getElementById('game-ui').classList.add('hidden'); }, 1500);
+                return;
             }
             currentStageIdx = randomQueue.pop(); setTimeout(initStage, 1500);
         } else {
             currentStageIdx++; 
-            if (!isChapterMode) {
-                savedStageIdx = currentStageIdx; saveData();
-            }
+            if (!isChapterMode) { savedStageIdx = currentStageIdx; saveData(); }
             
             if (isChapterMode && currentStageIdx > chapterEndIdx) {
                 setTimeout(() => { openModal('clear'); document.getElementById('game-ui').classList.add('hidden'); }, 1500);
@@ -829,11 +781,13 @@
 
     function showPreview() { document.getElementById('preview-verse').innerText = stagesRaw[currentStageIdx].text; document.getElementById('preview-overlay').classList.remove('hidden'); }
     function closePreview() { document.getElementById('preview-overlay').classList.add('hidden'); gameState = 'playing'; distanceToNextEvent = 600; initAudio(); }
+    
     function updateHUD() {
         document.getElementById('hp-display').innerText = '❤️'.repeat(player.hp); document.getElementById('coin-display').innerText = player.sessionCoins;
         document.getElementById('stage-title').innerText = isRandomMode ? `[랜덤] ${currentStageData.title}` : currentStageData.title;
         document.getElementById('progress-display').innerText = userSettings.gameMode === 'typing_full' ? '전체 모드' : `${currentBlankIdx}/${currentStageData.totalBlanks}`;
     }
+    
     function renderVerseUI() {
         if(userSettings.gameMode === 'typing_full') {
             document.getElementById('verse-display').innerHTML = `<span class="text-purple-400 font-black">전체 타이핑 모드</span>`;
@@ -853,16 +807,20 @@
     function spawnEvent() {
         if (quizActive) return;
         if (framesUntilQuiz <= 0 && currentBlankIdx < currentStageData.totalBlanks) {
-            if (userSettings.gameMode === 'typing_blank' || userSettings.gameMode === 'typing_full') { triggerTypingMode(); } 
+            if (userSettings.gameMode === 'typing_blank' || userSettings.gameMode === 'typing_full') { 
+                startTypingSequence(); // 변경점: 경고 화면을 거치는 시퀀스로 호출
+            } 
             else { spawnQuizZone(); distanceToNextEvent = 2200; }
         } else { spawnCoinPattern(); distanceToNextEvent = 600; }
     }
+    
     function spawnCoinPattern() {
         const sX = canvas.width + 100, type = Math.floor(Math.random()*3), yLvl = groundY - 40 - Math.floor(Math.random()*3)*laneGap; 
         if (type===0) for(let i=0;i<8;i++) coins.push({ x: sX + i*50, y: yLvl, r: 12, collected: false });
         else if (type===1) for(let i=0;i<7;i++) coins.push({ x: sX + i*60, y: yLvl - Math.sin((i/6)*Math.PI)*100, r: 12, collected: false });
         else for(let i=0;i<6;i++) coins.push({ x: sX + i*50, y: groundY - 40 - i*30, r: 12, collected: false });
     }
+    
     function spawnQuizZone() {
         if(currentBlankIdx >= currentStageData.totalBlanks) return;
         quizActive = true; quizWallId++;
@@ -882,12 +840,40 @@
         for(let i=0;i<10;i++) { let cx = sX + 200 + i * 80; coins.push({ x: cx, y: groundY - 40, r: 12, collected: false }); coins.push({ x: cx, y: groundY - laneGap - 40, r: 12, collected: false }); coins.push({ x: cx, y: groundY - laneGap*2 - 40, r: 12, collected: false }); }
     }
 
+    // --- [변경점] 타이핑 경고 시퀀스 ---
+    function startTypingSequence() {
+        if(currentBlankIdx >= currentStageData.totalBlanks && userSettings.gameMode === 'typing_blank') return;
+        
+        quizActive = true; 
+        gameSpeed = 0; 
+        gameState = 'typing_warning'; // 이 상태에서는 클릭/점프가 무시됨
+
+        const warningOverlay = document.getElementById('typing-warning-overlay');
+        warningOverlay.classList.remove('hidden');
+        warningOverlay.classList.add('flex');
+
+        // 1.5초 대기 후 실제 타이핑 모드로 진입
+        setTimeout(() => {
+            warningOverlay.classList.add('hidden');
+            warningOverlay.classList.remove('flex');
+            triggerTypingMode();
+        }, 1500);
+    }
+
     // --- 타이핑 모드 & LCS 오답 분석 ---
     let typingTimer; let typingTimeLeft = 30000; let typingMaxTime = 30000;
     
+    function focusTypingInput() {
+        const inputEl = document.getElementById('typing-input');
+        const submitBtn = document.getElementById('typing-submit-btn');
+        document.getElementById('mobile-focus-btn-container').classList.add('hidden');
+        inputEl.classList.remove('hidden');
+        submitBtn.classList.remove('hidden');
+        inputEl.focus();
+    }
+
     function triggerTypingMode() {
-        if(currentBlankIdx >= currentStageData.totalBlanks && userSettings.gameMode === 'typing_blank') return;
-        quizActive = true; gameSpeed = 0; 
+        gameState = 'typing';
         const overlay = document.getElementById('typing-overlay'); overlay.classList.remove('hidden'); overlay.classList.add('flex');
         
         if (userSettings.gameMode === 'typing_full') {
@@ -906,10 +892,18 @@
             typingMaxTime = 30000; 
         }
 
-        const inputEl = document.getElementById('typing-input'); inputEl.value = ''; setTimeout(() => inputEl.focus(), 100);
+        const inputEl = document.getElementById('typing-input'); inputEl.value = ''; 
+        const submitBtn = document.getElementById('typing-submit-btn');
+        
+        document.getElementById('mobile-focus-btn-container').classList.remove('hidden');
+        inputEl.classList.add('hidden');
+        submitBtn.classList.add('hidden');
+        
+        setTimeout(() => { if(window.innerWidth > 768) focusTypingInput(); }, 100);
         
         typingTimeLeft = typingMaxTime; clearInterval(typingTimer); document.getElementById('typing-timer-bar').style.width = '100%';
         typingTimer = setInterval(() => { 
+            if(isPaused) return;
             typingTimeLeft -= 100; document.getElementById('typing-timer-bar').style.width = (typingTimeLeft / (typingMaxTime/100)) + '%'; 
             if(typingTimeLeft <= 0) submitTypingAnswer(true); 
         }, 100);
@@ -941,6 +935,8 @@
         if(userSettings.gameMode === 'typing_full') currentBlankIdx = currentStageData.totalBlanks;
         else currentBlankIdx++; 
         renderVerseUI(); updateHUD();
+        
+        gameState = 'playing'; // 모드 복귀
         if (currentBlankIdx >= currentStageData.totalBlanks) { player.vy = -8; setTimeout(() => nextStageLogic(), 500); } 
         else { framesUntilQuiz = userSettings.quizIntervalSeconds * 60; quizActive = false; distanceToNextEvent = 600;}
         gameSpeed = inventory.walkActive ? 3.5 : baseGameSpeed; 
@@ -952,6 +948,8 @@
         player.hp--; player.hitTimer = 40;
         createParticles(player.x + 20, player.y + 20, '#ef4444', 30); updateHUD(); player.x -= 60; player.vy = -5; 
         document.getElementById('system-msg').innerText = isTimeout ? `시간 초과! 오답 처리됨` : `타이핑 오답!`; document.getElementById('system-msg').className = "text-xs md:text-sm text-red-400 font-bold mt-1 h-4 transition-all";
+        
+        gameState = 'playing'; // 모드 복귀
         framesUntilQuiz = userSettings.quizIntervalSeconds * 60; quizActive = false; distanceToNextEvent = 600;
         gameSpeed = inventory.walkActive ? 3.5 : baseGameSpeed; 
         if (player.hp <= 0) handleGameOver();
@@ -1005,29 +1003,56 @@
     
     // --- 물리 및 조작 ---
     function hideDashBtn() { const dashBtn = document.getElementById('dash-btn-container'); dashBtn.classList.add('opacity-0'); setTimeout(() => dashBtn.classList.add('hidden'), 300); player.isDashing = false; }
+    
     function activateDash() { 
         if(gameState !== 'playing' || !quizActive || player.isDashing || userSettings.gameMode !== 'choice') return; 
         playSound('dash');
-        player.isDashing = true; createParticles(player.x, player.y + player.height/2, '#f59e0b', 20); 
+        player.isDashing = true; 
+        
+        const targetGate = gates.find(g => g.id === quizWallId && g.isTarget);
+        if (targetGate) {
+            player.y = targetGate.y + (targetGate.h / 2) - (player.height / 2);
+            player.vy = 0; player.isJumping = false; player.dropFrames = 0;
+        }
+        createParticles(player.x, player.y + player.height/2, '#f59e0b', 20); 
     }
-    document.getElementById('btn-dash').addEventListener('click', activateDash); document.getElementById('btn-dash').addEventListener('touchstart', (e) => { e.preventDefault(); activateDash(); }, {passive:false});
+
+    document.getElementById('btn-dash').addEventListener('click', activateDash); 
+    document.getElementById('btn-dash').addEventListener('touchstart', (e) => { 
+        e.preventDefault(); e.stopPropagation(); activateDash(); 
+    }, {passive:false});
     
     function doJump() { if (player.jumpCount < player.maxJumps) { playSound('jump'); player.vy = player.jumpPower; player.jumpCount++; player.isJumping = true; createParticles(player.x+player.width/2, player.y+player.height, '#ffffff', 5); } }
     function doDrop() { if (player.y < groundY - player.height) { playSound('drop'); player.dropFrames = 15; if(player.vy<0) player.vy=0; player.vy+=3; } }
-    function handleInteraction(cX) { if (gameState === 'preview') closePreview(); else if (gameState === 'playing') { const rect = canvas.getBoundingClientRect(); const relX = cX - rect.left; if (relX < rect.width / 2) doDrop(); else doJump(); } }
     
-    canvas.addEventListener('touchstart', (e) => { if(gameState==='preview'||gameState==='playing') { e.preventDefault(); handleInteraction(e.touches[0].clientX); } }, {passive: false});
-    canvas.addEventListener('mousedown', (e) => { if(gameState==='preview'||gameState==='playing') handleInteraction(e.clientX); });
+    function handleInteraction(cX) { 
+        if (gameState === 'preview') closePreview(); 
+        else if (gameState === 'playing') { 
+            const rect = canvas.getBoundingClientRect(); const relX = cX - rect.left; 
+            if (relX < rect.width / 2) doDrop(); else doJump(); 
+        } 
+    }
+    
+    canvas.addEventListener('touchstart', (e) => { 
+        // playing이나 preview 상태일 때만 입력 허용 (typing_warning 등에서는 무시됨)
+        if(gameState === 'preview' || gameState === 'playing') { 
+            e.preventDefault(); handleInteraction(e.touches[0].clientX); 
+        } 
+    }, {passive: false});
+    
+    canvas.addEventListener('mousedown', (e) => { 
+        if(gameState === 'preview' || gameState === 'playing') handleInteraction(e.clientX); 
+    });
     
     window.addEventListener('keydown', (e) => {
         if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitTypingAnswer(); } return; 
+            if (e.code === 'Enter' && !e.shiftKey) { e.preventDefault(); submitTypingAnswer(); } return; 
         }
-        if (gameState === 'preview' && (e.code==='Space'||e.code==='Enter')) { e.preventDefault(); closePreview(); }
+        if (gameState === 'preview' && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); closePreview(); }
         else if (gameState === 'playing') {
-            if (e.code==='Space'||e.code==='ArrowUp') { e.preventDefault(); doJump(); }
-            if (e.code==='ArrowDown') { e.preventDefault(); doDrop(); }
-            if (e.code==='ShiftLeft' || e.code==='ShiftRight') { e.preventDefault(); activateDash(); }
+            if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); doJump(); }
+            if (e.code === 'ArrowDown') { e.preventDefault(); doDrop(); }
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { e.preventDefault(); activateDash(); }
         }
     });
 
@@ -1055,24 +1080,26 @@
     }
 
     function handleGateCollision(gate) {
-        gate.broken = true; quizActive = false; hideDashBtn();
+        gate.broken = true; hideDashBtn();
         if (gate.isTarget) {
-            playSound('correct');
-            recordWordStat(gate.word, true); createParticles(gate.x + gate.w/2, gate.y + gate.h/2, '#4ade80', 30); 
+            quizActive = false; playSound('correct'); recordWordStat(gate.word, true); createParticles(gate.x + gate.w/2, gate.y + gate.h/2, '#4ade80', 30); 
             document.getElementById('system-msg').innerText = `정답 돌파! [${gate.word}]`; document.getElementById('system-msg').className = "text-xs md:text-sm text-green-400 font-bold mt-1 md:mt-2 h-4 transition-all";
             currentBlankIdx++; renderVerseUI(); updateHUD();
             gates.forEach(g => { if(g.id === gate.id) g.broken = true; });
             if (currentBlankIdx >= currentStageData.totalBlanks) { player.vy = -8; nextStageLogic(); } else { framesUntilQuiz = userSettings.quizIntervalSeconds * 60; }
         } else {
-            playSound('wrong');
-            recordWordStat(gate.word, false); 
-            if (player.hitTimer === 0) {
-                player.hp--; player.hitTimer = 40; createParticles(gate.x + gate.w/2, gate.y + gate.h/2, '#ef4444', 30); updateHUD(); player.x -= 60; player.vy = -5; 
-                canvas.style.transform = "translateX(15px)"; setTimeout(() => canvas.style.transform = "translateX(-15px)", 50); setTimeout(() => canvas.style.transform = "translateX(0)", 100);
-                document.getElementById('system-msg').innerText = `오답! [${gate.word}]`; document.getElementById('system-msg').className = "text-xs md:text-sm text-red-400 font-bold mt-1 md:mt-2 h-4 transition-all";
-                gates.forEach(g => { if(g.id === gate.id) g.broken = true; });
-                framesUntilQuiz = userSettings.quizIntervalSeconds * 60; 
-                if (player.hp <= 0) handleGameOver();
+            if (player.isDashing) {
+                createParticles(gate.x + gate.w/2, gate.y + gate.h/2, '#94a3b8', 15);
+            } else {
+                quizActive = false; playSound('wrong'); recordWordStat(gate.word, false); 
+                if (player.hitTimer === 0) {
+                    player.hp--; player.hitTimer = 40; createParticles(gate.x + gate.w/2, gate.y + gate.h/2, '#ef4444', 30); updateHUD(); player.x -= 60; player.vy = -5; 
+                    canvas.style.transform = "translateX(15px)"; setTimeout(() => canvas.style.transform = "translateX(-15px)", 50); setTimeout(() => canvas.style.transform = "translateX(0)", 100);
+                    document.getElementById('system-msg').innerText = `오답! [${gate.word}]`; document.getElementById('system-msg').className = "text-xs md:text-sm text-red-400 font-bold mt-1 md:mt-2 h-4 transition-all";
+                    gates.forEach(g => { if(g.id === gate.id) g.broken = true; });
+                    framesUntilQuiz = userSettings.quizIntervalSeconds * 60; 
+                    if (player.hp <= 0) handleGameOver();
+                }
             }
         }
     }
@@ -1082,11 +1109,11 @@
     function drawBackground() {
         let grad = ctx.createLinearGradient(0, 0, 0, canvas.height); grad.addColorStop(0, '#020617'); grad.addColorStop(1, '#1e293b'); ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "rgba(148, 163, 184, 0.1)"; let currentScrollSpeed = player.isDashing ? gameSpeed * 4 : gameSpeed;
-        for(let i=0; i<10; i++) { let s = gameState==='preview'?0:currentScrollSpeed; let x = ((frameCount*s*-0.2)+(i*200))%(canvas.width+200); if(x<-200) x+=canvas.width+200; ctx.fillRect(x, 50+(i%5)*100, 150, 4); }
+        for(let i=0; i<10; i++) { let s = (gameState==='preview' || gameState==='typing_warning' || gameState==='typing')?0:currentScrollSpeed; let x = ((frameCount*s*-0.2)+(i*200))%(canvas.width+200); if(x<-200) x+=canvas.width+200; ctx.fillRect(x, 50+(i%5)*100, 150, 4); }
         ctx.fillStyle = "#334155"; ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY); ctx.fillStyle = "#fbbf24"; ctx.fillRect(0, groundY, canvas.width, 4);
     }
     function drawPlatforms() { ctx.fillStyle = "rgba(71, 85, 105, 0.9)"; ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 2; platforms.forEach(p => { ctx.beginPath(); ctx.roundRect(p.x, p.y, p.width, p.height, 5); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#38bdf8"; ctx.fillRect(p.x+10, p.y+p.height/2-1, p.width-20, 2); ctx.fillStyle = "rgba(71, 85, 105, 0.9)";}); }
-    function drawCoins() { coins.forEach(c => { if (c.collected) return; ctx.save(); ctx.translate(c.x, c.y); ctx.scale(Math.abs(Math.sin(frameCount*(gameState==='preview'?0:0.1)+c.x)), 1); ctx.shadowBlur = 10; ctx.shadowColor = "#f59e0b"; ctx.fillStyle = "#fbbf24"; ctx.beginPath(); ctx.arc(0, 0, c.r, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#d97706"; ctx.beginPath(); ctx.arc(0, 0, c.r*0.6, 0, Math.PI*2); ctx.fill(); ctx.restore(); }); }
+    function drawCoins() { coins.forEach(c => { if (c.collected) return; ctx.save(); ctx.translate(c.x, c.y); ctx.scale(Math.abs(Math.sin(frameCount*(gameState==='playing'?0.1:0)+c.x)), 1); ctx.shadowBlur = 10; ctx.shadowColor = "#f59e0b"; ctx.fillStyle = "#fbbf24"; ctx.beginPath(); ctx.arc(0, 0, c.r, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#d97706"; ctx.beginPath(); ctx.arc(0, 0, c.r*0.6, 0, Math.PI*2); ctx.fill(); ctx.restore(); }); }
     function drawGates() { gates.forEach(g => { if (g.broken) return; ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = 'rgba(239, 68, 68, 0.4)'; ctx.strokeStyle = "#fca5a5"; ctx.lineWidth = 3; ctx.shadowBlur = 15; ctx.shadowColor = "#ef4444"; ctx.beginPath(); ctx.roundRect(g.x, g.y, g.w, g.h, 8); ctx.fill(); ctx.stroke(); ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(g.x+10, g.y+10); ctx.lineTo(g.x+g.w-10, g.y+30); ctx.stroke(); ctx.shadowBlur = 0; ctx.font = "900 32px 'Noto Serif KR'"; let tw = ctx.measureText(g.word).width; ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; ctx.fillRect(g.x+g.w/2-tw/2-10, g.y+g.h/2-20, tw+20, 40); ctx.strokeStyle = "#000000"; ctx.lineWidth = 6; ctx.strokeText(g.word, g.x+g.w/2, g.y+g.h/2); ctx.fillStyle = "#ffffff"; ctx.fillText(g.word, g.x+g.w/2, g.y+g.h/2); ctx.restore(); }); }
     function drawSigns() { signs.forEach(s => { ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.shadowBlur = 15; ctx.shadowColor = "#fbbf24"; ctx.font = "900 28px 'Noto Serif KR'"; let tw = ctx.measureText(s.word).width; ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(s.x-tw/2-15, s.y-20, tw+30, 40); ctx.strokeStyle = "#000000"; ctx.lineWidth = 6; ctx.strokeText(s.word, s.x, s.y); ctx.fillStyle = "#fcd34d"; ctx.fillText(s.word, s.x, s.y); ctx.restore(); }); }
     function drawPlayer() {
@@ -1096,15 +1123,19 @@
         else if(inventory.equippedSkin === 'skin_blue') { skinColor = "#38bdf8"; haloColor = "#bae6fd"; }
         else if(inventory.equippedSkin === 'skin_red') { skinColor = "#ef4444"; haloColor = "#fca5a5"; }
         ctx.shadowBlur = 15; ctx.shadowColor = player.isDashing ? "#f97316" : haloColor; ctx.fillStyle = skinColor;
-        ctx.beginPath(); let tilt = (gameState === 'preview') ? 0 : (player.isJumping ? 0.1 : (player.isDashing ? 0.4 : 0.2)); ctx.translate(cx, cy); ctx.rotate(tilt); ctx.translate(-cx, -cy);
+        ctx.beginPath(); let tilt = (gameState === 'preview' || gameState === 'typing' || gameState === 'typing_warning') ? 0 : (player.isJumping ? 0.1 : (player.isDashing ? 0.4 : 0.2)); ctx.translate(cx, cy); ctx.rotate(tilt); ctx.translate(-cx, -cy);
         ctx.moveTo(player.x+10, player.y+15); ctx.lineTo(player.x+player.width-5, player.y+15); ctx.lineTo(player.x+player.width, player.y+player.height); ctx.lineTo(player.x-5, player.y+player.height); ctx.fill();
         ctx.fillStyle = haloColor; ctx.beginPath(); ctx.arc(cx, player.y+8, 12, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#000000"; ctx.fillRect(cx, player.y+4, 8, 4); ctx.restore();
     }
     function drawParticles() { for (let i = particles.length - 1; i >= 0; i--) { let p = particles[i]; ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0; p.x += p.vx; p.y += p.vy; p.life -= 0.05; if (p.life <= 0) particles.splice(i, 1); } }
 
     function gameLoop() {
-        if (gameState === 'preview') { ctx.clearRect(0, 0, canvas.width, canvas.height); drawBackground(); drawPlatforms(); drawPlayer(); frameCount++; animationId = requestAnimationFrame(gameLoop); return; }
+        if (gameState === 'preview' || gameState === 'typing_warning' || gameState === 'typing') { 
+            ctx.clearRect(0, 0, canvas.width, canvas.height); drawBackground(); drawPlatforms(); drawSigns(); drawGates(); drawCoins(); drawPlayer(); drawParticles();
+            frameCount++; animationId = requestAnimationFrame(gameLoop); return; 
+        }
         if (gameState !== 'playing') return;
+        if (isPaused) { animationId = requestAnimationFrame(gameLoop); return; }
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         let currentScrollSpeed = player.isDashing ? gameSpeed * 4 : gameSpeed; 
@@ -1123,13 +1154,11 @@
         frameCount++; animationId = requestAnimationFrame(gameLoop);
     }
 
-    // =========================================================================
-    // =================== 인출훈련 (과녁 맞추기) ===================
-    // =========================================================================
+    // --- 인출훈련 (과녁 맞추기) ---
     let archeryTimer; let archeryTimeLeft = 10000; let currentArcheryStage = null;
 
     function startArchery() {
-        initAudio();
+        initAudio(); isPaused = false;
         document.getElementById('main-menu').classList.add('opacity-0', 'pointer-events-none'); setTimeout(() => document.getElementById('main-menu').classList.add('hidden'), 300);
         document.getElementById('archery-ui').classList.remove('hidden'); document.getElementById('archery-ui').classList.add('flex');
         gameState = 'archery'; document.getElementById('archery-coin').innerText = totalCoins; nextArcheryRound();
@@ -1161,6 +1190,7 @@
         archeryTimeLeft = 10000; document.getElementById('archery-timer-bar').style.width = '100%';
         clearInterval(archeryTimer);
         archeryTimer = setInterval(() => {
+            if(isPaused) return; 
             archeryTimeLeft -= 100; document.getElementById('archery-timer-bar').style.width = `${(archeryTimeLeft / 10000) * 100}%`;
             if(archeryTimeLeft <= 0) { clearInterval(archeryTimer); playSound('wrong'); showArcheryResult(false, 0); }
         }, 100);
@@ -1176,9 +1206,7 @@
                 playSound('correct'); document.getElementById('archery-target').classList.add('target-hit');
                 score = Math.max(10, Math.floor(archeryTimeLeft / 100)); totalCoins += score; document.getElementById('archery-coin').innerText = totalCoins;
                 recordVerseStat(currentArcheryStage.title, true);
-            } else {
-                playSound('wrong'); recordVerseStat(currentArcheryStage.title, false);
-            }
+            } else { playSound('wrong'); recordVerseStat(currentArcheryStage.title, false); }
             showArcheryResult(isCorrect, score);
         }, 300); 
     }
