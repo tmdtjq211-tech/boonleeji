@@ -60,7 +60,6 @@
         
         <canvas id="gameCanvas" class="absolute inset-0 w-full h-full block pointer-events-auto"></canvas>
 
-        <!-- 게임 중단 HUD -->
         <div id="game-ui" class="absolute inset-0 z-10 hidden flex flex-col pointer-events-none">
             <div class="flex justify-between items-start p-2 md:p-4">
                 <div class="flex gap-2 md:gap-3 items-center">
@@ -98,7 +97,6 @@
             </div>
         </div>
 
-        <!-- 타이핑 진입 경고창 (새로 추가됨) -->
         <div id="typing-warning-overlay" class="absolute inset-0 bg-red-600/90 z-50 hidden flex-col items-center justify-center pointer-events-auto backdrop-blur-md">
             <h1 class="text-4xl md:text-6xl font-black text-white mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]">⚠️ 타이핑 준비 ⚠️</h1>
             <p class="text-lg md:text-2xl font-bold text-yellow-300 animate-pulse bg-black/50 px-6 py-2 rounded-full">잠시 화면 터치를 멈춰주세요!</p>
@@ -694,12 +692,42 @@
 
     // --- 5. 런닝 게임 로직 ---
     function generateStageData(idx) {
-        let raw = stagesRaw[idx]; let pool = userCustomSettings.customBlanks[idx] || raw.defaultBlanks; let chosen = [];
-        if (userCustomSettings.randomMode) { let shuffled = [...pool].sort(() => 0.5 - Math.random()); chosen = shuffled.slice(0, 5); } else chosen = [...pool]; 
-        let foundBlanks = chosen.map(w => ({ word: w, index: raw.text.indexOf(w) })).filter(item => item.index !== -1).sort((a, b) => a.index - b.index);
-        let finalWords = foundBlanks.map(b => b.word); let template = raw.text;
-        finalWords.forEach((word, i) => template = template.replace(word, `[%${i+1}]`));
-        return { title: raw.title, text: raw.text, template: template, blanks: finalWords, decoys: [...raw.decoys], totalBlanks: finalWords.length };
+        let raw = stagesRaw[idx];
+        let chosen = [];
+
+        if (userCustomSettings.randomMode) {
+            let allWords = raw.text.split(/\s+/).map(w => w.replace(/[.,!?]/g, ''));
+            let candidates = [...new Set(allWords.filter(w => w.length >= 2))];
+            chosen = candidates.sort(() => 0.5 - Math.random()).slice(0, 5);
+        } else {
+            let pool = userCustomSettings.customBlanks[idx] || raw.defaultBlanks;
+            chosen = [...pool];
+        }
+
+        let foundBlanks = chosen.map(w => ({ word: w, index: raw.text.indexOf(w) }))
+                                .filter(item => item.index !== -1)
+                                .sort((a, b) => a.index - b.index);
+
+        let finalWords = foundBlanks.map(b => b.word);
+        let template = raw.text;
+
+        finalWords.forEach((word, i) => {
+            template = template.replace(word, `[%${i+1}]`);
+        });
+
+        let extraDecoys = raw.text.split(/\s+/).map(w => w.replace(/[.,!?]/g, ''))
+                                 .filter(w => w.length >= 2 && !finalWords.includes(w));
+        let combinedDecoys = [...raw.decoys, ...extraDecoys];
+        let finalDecoys = [...new Set(combinedDecoys)].sort(() => 0.5 - Math.random());
+
+        return { 
+            title: raw.title, 
+            text: raw.text, 
+            template: template, 
+            blanks: finalWords, 
+            decoys: finalDecoys, 
+            totalBlanks: finalWords.length 
+        };
     }
 
     function startChapterGame(isRandom) {
